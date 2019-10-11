@@ -37,7 +37,7 @@ class CentroidTracker():
         startX = bbox[0]
         endX = bbox[2]
         cropped = self.frame[startY:endY, startX:endX]
-        cv2.imwrite("frame_captures/frame%d.jpg" % self.nextObjectID, cropped) 
+        cv2.imwrite("static/object%d.jpg" % self.nextObjectID, cropped)  #todo: must be static/image for flask...
         self.nextObjectID += 1
 
     def deregister(self, objectID):

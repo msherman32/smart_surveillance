@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+        {% for id in objects %}
+                <div id="container">
+                        <img src="/static/object{{id}}.jpg" alt="object_{{id}}"/>
+                </div>
+        {% endfor %}
+
+{% endblock %}
