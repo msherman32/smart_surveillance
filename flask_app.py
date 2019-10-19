@@ -1,10 +1,12 @@
-from flask import Flask, send_from_directory, render_template, send_file
+from flask import Flask, request, jsonify, send_from_directory, render_template, send_file
 import os
 
 path = 'C:\\Workspace\\smart_surveillance\\centroid_simple-object-tracking\\frame_captures'
 
 app = Flask(__name__)
 
+# THIS IS THE SERVER
+# TODO: instead of displaying the image, just be able to save the file somewhere
 @app.route('/')
 def index():
     return 'Hello, World!'
@@ -20,7 +22,7 @@ def get_captures():
 
 @app.route('/send_files/')
 def send_files():
-    objects = [0,1,2]
+    objects = [0,1]
     # objects = []
     # # r=root, d=directories, f = objects
     # for r, d, f in os.walk(path):
@@ -30,6 +32,13 @@ def send_files():
     # for f in objects:
     #     print(f)
     return render_template('files.html', objects=objects)
+
+@app.route('/submit/', methods=['POST'])
+def submit():
+    content = request.json
+    print(content['object_id'])
+    print(content['image'])
+    return render_template('base.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

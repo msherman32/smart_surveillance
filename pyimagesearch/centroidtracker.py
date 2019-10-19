@@ -3,6 +3,8 @@ from scipy.spatial import distance as dist
 from collections import OrderedDict
 import numpy as np
 import cv2
+import requests
+import base64
 
 class CentroidTracker():
     def __init__(self, maxDisappeared=1): # 50
@@ -38,6 +40,17 @@ class CentroidTracker():
         endX = bbox[2]
         cropped = self.frame[startY:endY, startX:endX]
         cv2.imwrite("static/object%d.jpg" % self.nextObjectID, cropped)  #todo: must be static/image for flask...
+        str = ""
+        with open("static/object%d.jpg" % self.nextObjectID, "rb") as imageFile:
+            str = base64.b64encode(imageFile.read()).decode('ascii') # must decode to ascii so that it is JSON serializable
+        url = 'http://localhost:5000/submit/'
+        payload = {"object_id":self.nextObjectID, "image":str}
+        headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+        requests.post(url, json=payload, headers=headers)
+
+        # if res.ok:
+        #     print(res)
+        # make a post request to /submit (which will be an endpoint replaced with whisk) and then display which displays everything that has been submitted
         self.nextObjectID += 1
 
     def deregister(self, objectID):

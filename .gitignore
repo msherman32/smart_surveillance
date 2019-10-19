@@ -1,3 +1,4 @@
 .vscode/*
 frame_captures/*
 pyimagesearch/__pycache__
+static
