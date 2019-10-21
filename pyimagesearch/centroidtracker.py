@@ -46,7 +46,7 @@ class CentroidTracker():
         url = 'http://localhost:5000/submit/'
         payload = {"object_id":self.nextObjectID, "image":str}
         headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-        requests.post(url, json=payload, headers=headers)
+        # requests.post(url, json=payload, headers=headers)
 
         # if res.ok:
         #     print(res)

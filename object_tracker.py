@@ -29,12 +29,14 @@ ct = CentroidTracker()
 
 # load our serialized model from disk
 print("[INFO] loading model...")
+# https://github.com/C-Aniruddh/realtime_object_recognition
 net = cv2.dnn.readNetFromCaffe(args["prototxt"], args["model"])
 
 # initialize the video stream and allow the camera sensor to warmup
 print("[INFO] starting video stream...")
 # vs = VideoStream(src=0).start()
 # Set video to load
+# for more videos, look at Campus Videos on Google Drive
 videoPath = args["video"]
 
 # Create a video capture object to read videos
