@@ -1,17 +1,35 @@
 # import the necessary packages
 from scipy.spatial import distance as dist
 from collections import OrderedDict
+from threading import Thread
+from queue import Queue
 import numpy as np
 import cv2
 import requests
 import base64
 
-class CentroidTracker():
-    def __init__(self, maxDisappeared=1): # 50
+class Http_processor(Thread):
+    def __init__(self, queue):
+        Thread.__init__(self)
+        self.queue = queue
+
+    def run(self):
+        # if (condition):?
+        url = 'http://localhost:5000/submit/'
+        headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+        payload = self.queue.get()
+        requests.post(url, json=payload, headers=headers)
+        self.queue.task_done()
+
+class CentroidTracker(Thread):
+    def __init__(self, queue, maxDisappeared=1): # 50
+        Thread.__init__(self)
         # initialize the next unique object ID along with two ordered
         # dictionaries used to keep track of mapping a given object
         # ID to its centroid and number of consecutive frames it has
         # been marked as "disappeared", respectively
+        self.queue = queue
+
         self.nextObjectID = 0
         self.objects = OrderedDict()
         self.disappeared = OrderedDict()
@@ -39,14 +57,30 @@ class CentroidTracker():
         startX = bbox[0]
         endX = bbox[2]
         cropped = self.frame[startY:endY, startX:endX]
+        # print(type(cropped))
+        # take away writing to file
         cv2.imwrite("static/object%d.jpg" % self.nextObjectID, cropped)  #todo: must be static/image for flask...
-        str = ""
+     
+        # img_str = cv2.imencode('.jpg', cropped)[1].tostring()
+        # print (type(img_str))
+        # Put this into http_processor?
+        image_string = ""
         with open("static/object%d.jpg" % self.nextObjectID, "rb") as imageFile:
-            str = base64.b64encode(imageFile.read()).decode('ascii') # must decode to ascii so that it is JSON serializable
-        url = 'http://localhost:5000/submit/'
-        payload = {"object_id":self.nextObjectID, "image":str}
-        headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-        # requests.post(url, json=payload, headers=headers)
+        #     # imageFile.write(img_str.tobytes())
+        #     print(imageFile)
+            image_string = base64.b64encode(imageFile.read()).decode('ascii') # must decode to ascii so that it is JSON serializable
+        payload = {"object_id":self.nextObjectID, "image":image_string}
+        self.queue.put_nowait(payload)
+   
+        # add before and after time?
+        # do this multithreaded (to get these operations out of Critical Path)
+        # use quicker encoding for images
+        # structure of multithread with mutex lock and condition variables:
+        # 1. get/acquire mutex
+        # 2. check queue for !empty
+        # 3. if !empty, send htttp post, release mutex
+        # 4. else, wait on condition variable
+        # if woken up, return to step 1
 
         # if res.ok:
         #     print(res)

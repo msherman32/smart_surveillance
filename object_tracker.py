@@ -2,13 +2,15 @@
 # python object_tracker.py --prototxt deploy.prototxt --model res10_300x300_ssd_iter_140000.caffemodel
 
 # import the necessary packages
-from pyimagesearch.centroidtracker import CentroidTracker
+from pyimagesearch.centroidtracker import CentroidTracker, Http_processor
 from imutils.video import VideoStream, FPS
 import numpy as np
 import argparse
 import imutils
 import time
 import cv2
+from queue import Queue
+from threading import Thread
 # import basehash as bhash
 
 # construct the argument parse and parse the arguments
@@ -24,7 +26,11 @@ ap.add_argument("-c", "--confidence", type=float, default=0.5,
 args = vars(ap.parse_args())
 
 # initialize our centroid tracker and frame dimensions
-ct = CentroidTracker()
+q = Queue()
+ct = CentroidTracker(q) # ct is now a thread
+ht = Http_processor(q)
+ct.start()
+
 (H, W) = (None, None)
 
 # load our serialized model from disk
@@ -48,6 +54,11 @@ fps = FPS().start()
 
 frame_id = 0
 
+ht.start()
+# ct.join()
+# ht.join()
+# q.join()
+
 # hash_fn = bhash.base36()  # you can initialize a 36, 52, 56, 58, 62 and 94 base fn
 # hash_value = hash_fn.hash((2,3)) # returns 'M8YZRZ'
 # print(hash_value)
@@ -56,7 +67,7 @@ frame_id = 0
 # loop over the frames from the video stream
 while True:
        # read the next frame from the video stream and resize it
-#        frame = cap.read()
+       frame = cap.read()
        # Read first frame
        success, frame = cap.read()
        # quit if unable to read the video file

@@ -37,7 +37,8 @@ def send_files():
 def submit():
     content = request.json
     print(content['object_id'])
-    print(content['image'])
+    print("frame received")
+    # print(content['image'])
     return render_template('base.html')
 
 if __name__ == '__main__':
