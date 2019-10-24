@@ -30,6 +30,10 @@ q = Queue()
 ct = CentroidTracker(q) # ct is now a thread
 ht = Http_processor(q)
 ct.start()
+ht.start()
+# ct.join()
+# ht.join()
+# q.join()
 
 (H, W) = (None, None)
 
@@ -53,11 +57,6 @@ time.sleep(2.0)
 fps = FPS().start()
 
 frame_id = 0
-
-ht.start()
-# ct.join()
-# ht.join()
-# q.join()
 
 # hash_fn = bhash.base36()  # you can initialize a 36, 52, 56, 58, 62 and 94 base fn
 # hash_value = hash_fn.hash((2,3)) # returns 'M8YZRZ'
@@ -88,7 +87,6 @@ while True:
        net.setInput(blob)
        detections = net.forward()
        rects = []
-#        print(detections)
 
        # loop over the detections
        for i in range(0, detections.shape[2]):

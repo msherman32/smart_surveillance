@@ -13,13 +13,14 @@ class Http_processor(Thread):
         Thread.__init__(self)
         self.queue = queue
 
-    def run(self):
-        # if (condition):?
+    def run(self): 
+        #check for a condition here?
         url = 'http://localhost:5000/submit/'
         headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-        payload = self.queue.get()
-        requests.post(url, json=payload, headers=headers)
-        self.queue.task_done()
+        while (True):
+            payload = self.queue.get()
+            requests.post(url, json=payload, headers=headers)
+            self.queue.task_done()
 
 class CentroidTracker(Thread):
     def __init__(self, queue, maxDisappeared=1): # 50
@@ -59,17 +60,18 @@ class CentroidTracker(Thread):
         cropped = self.frame[startY:endY, startX:endX]
         # print(type(cropped))
         # take away writing to file
-        cv2.imwrite("static/object%d.jpg" % self.nextObjectID, cropped)  #todo: must be static/image for flask...
+        # cv2.imwrite("static/object%d.jpg" % self.nextObjectID, cropped)  #todo: must be static/image for flask...
      
-        # img_str = cv2.imencode('.jpg', cropped)[1].tostring()
-        # print (type(img_str))
+        retval, buf = cv2.imencode('.jpg', cropped)
+        jpg_as_text = base64.b64encode(buf).decode('ascii')
+        # img_str = cv2.imencode('.jpg', cropped)[1].toString()
         # Put this into http_processor?
-        image_string = ""
-        with open("static/object%d.jpg" % self.nextObjectID, "rb") as imageFile:
+        # image_string = ""
+        # with open("static/object%d.jpg" % self.nextObjectID, "rb") as imageFile:
         #     # imageFile.write(img_str.tobytes())
         #     print(imageFile)
-            image_string = base64.b64encode(imageFile.read()).decode('ascii') # must decode to ascii so that it is JSON serializable
-        payload = {"object_id":self.nextObjectID, "image":image_string}
+            # image_string = base64.b64encode(imageFile.read()).decode('ascii') # must decode to ascii so that it is JSON serializable
+        payload = {"object_id":self.nextObjectID, "image":jpg_as_text}
         self.queue.put_nowait(payload)
    
         # add before and after time?
