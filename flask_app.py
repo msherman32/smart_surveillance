@@ -39,6 +39,8 @@ def submit():
     print(content['object_id'])
     print("frame received")
     # print(content['image'])
+    #TODO: work on what is returned here
+    # return None
     return render_template('base.html')
 
 if __name__ == '__main__':

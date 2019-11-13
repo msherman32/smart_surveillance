@@ -1,6 +1,6 @@
 # USAGE
 # python object_tracker.py --prototxt deploy.prototxt --model res10_300x300_ssd_iter_140000.caffemodel
-
+# python3 object_tracker.py -p mobileNetSSD/MobileNetSSD.prototxt -m mobileNetSSD/MobileNetSSD.caffemodel -v videos/ferst_hemphill_day.avi
 # import the necessary packages
 from pyimagesearch.centroidtracker import CentroidTracker, Http_processor
 from imutils.video import VideoStream, FPS
@@ -8,7 +8,7 @@ import numpy as np
 import argparse
 import imutils
 import time
-import cv2
+import cv2 as  cv
 from queue import Queue
 from threading import Thread
 # import basehash as bhash
@@ -29,10 +29,11 @@ args = vars(ap.parse_args())
 q = Queue()
 ct = CentroidTracker(q) # ct is now a thread
 ht = Http_processor(q)
+ct.setDaemon(True)
+ht.setDaemon(True)
 ct.start()
 ht.start()
-# ct.join()
-# ht.join()
+
 # q.join()
 
 (H, W) = (None, None)
@@ -40,7 +41,13 @@ ht.start()
 # load our serialized model from disk
 print("[INFO] loading model...")
 # https://github.com/C-Aniruddh/realtime_object_recognition
-net = cv2.dnn.readNetFromCaffe(args["prototxt"], args["model"])
+net = cv.dnn.readNetFromCaffe(args["prototxt"], args["model"])
+
+CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
+	"bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
+	"dog", "horse", "motorbike", "person", "pottedplant", "sheep",
+	"sofa", "train", "tvmonitor"]
+acceptable_ids = [6,7,14] # bus, car, motorbike
 
 # initialize the video stream and allow the camera sensor to warmup
 print("[INFO] starting video stream...")
@@ -50,7 +57,7 @@ print("[INFO] starting video stream...")
 videoPath = args["video"]
 
 # Create a video capture object to read videos
-cap = cv2.VideoCapture(videoPath)
+cap = cv.VideoCapture(videoPath)
 
 time.sleep(2.0)
 
@@ -71,8 +78,8 @@ while True:
        success, frame = cap.read()
        # quit if unable to read the video file
        if not success:
-        print('Failed to read video')
-        exit(1)
+              print('Failed to read video')
+              exit(1)
        frame = imutils.resize(frame, width=300) #400
 
        # if the frame dimensions are None, grab them
@@ -82,10 +89,13 @@ while True:
        # construct a blob from the frame, pass it through the network,
        # obtain our output predictions, and initialize the list of
        # bounding box rectangles
-#        blob = cv2.dnn.blobFromImage(frame, 1.0, (W, H), (104.0, 177.0, 123.0))
-       blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 0.007843, (300, 300), 127.5)
+#        blob = cv.dnn.blobFromImage(frame, 1.0, (W, H), (104.0, 177.0, 123.0))
+       stime = time.time()
+       blob = cv.dnn.blobFromImage(cv.resize(frame, (300, 300)), 0.007843, (300, 300), 127.5)
        net.setInput(blob)
        detections = net.forward()
+       etime = time.time()
+       print("Detection Latency: %.3f" % (etime-stime))
        rects = []
 
        # loop over the detections
@@ -95,44 +105,43 @@ while True:
                if detections[0, 0, i, 2] > args["confidence"]:
                        # compute the (x, y)-coordinates of the bounding box for
                        # the object, then update the bounding box rectangles list
-                       box = detections[0, 0, i, 3:7] * np.array([W, H, W, H])
-                       rects.append(box.astype("int"))
-                #        print(detections[0,0,i,0:7])
+                       idx = int(detections[0, 0, i, 1])
+                       if idx in acceptable_ids: # if CLASSES[idx] == "car":
+                            box = detections[0, 0, i, 3:7] * np.array([W, H, W, H])
+                            rects.append(box.astype("int"))
+                            # draw a bounding box surrounding the object so we can
+                            # visualize it
+                            (startX, startY, endX, endY) = box.astype("int")
+                            cv.rectangle(frame, (startX, startY), (endX, endY),
+                                   (0, 255, 0), 2)
 
-                       # draw a bounding box surrounding the object so we can
-                       # visualize it
-                       (startX, startY, endX, endY) = box.astype("int")
-                       cv2.rectangle(frame, (startX, startY), (endX, endY),
-                               (0, 255, 0), 2)
-
-       # update our centroid tracker using the computed set of bounding
-       # box rectangles
+       #TODO: use sort tracker here
+       # update our centroid tracker using the computed set of bounding box rectangles
        objects = ct.update(rects, frame_id, frame)
 
        # loop over the tracked objects
        for (objectID, centroid) in objects.items():
-               # draw both the ID of the object and the centroid of the
-               # object on the output frame
+               # draw both the ID of the object and the centroid of the object on the output frame
                text = "ID {}".format(objectID)
-               cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-               cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
-               # if ct.is_new(objectID):
-            # cv2.imwrite("frame_captures/frame%d.jpg" % frame_id, frame) 
-
+               cv.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+               cv.circle(frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+              
        # update the FPS counter
        fps.update()
        frame_id += 1
 
        # show the output frame
-       cv2.imshow("Frame", frame)
-       key = cv2.waitKey(1) & 0xFF
+       cv.imshow("Frame", frame)
 
        # if the `q` key was pressed, break from the loop
+       key = cv.waitKey(1) & 0xFF
        if key == ord("q"):
-               break
+              break
 
 # stop the timer and display FPS information
+# ct.join()
+# ht.join()
 fps.stop()
 print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
 print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
@@ -148,5 +157,5 @@ print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
 # print(net.dump())
 
 # do a bit of cleanup
-cv2.destroyAllWindows()
+cv.destroyAllWindows()
 # vc.stop()

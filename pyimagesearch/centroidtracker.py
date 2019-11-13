@@ -4,9 +4,22 @@ from collections import OrderedDict
 from threading import Thread
 from queue import Queue
 import numpy as np
-import cv2
+import cv2 as cv
 import requests
+import time
 import base64
+
+
+class Packet():
+    def __init__(self, payload, time):
+        self.payload = payload
+        self.time = time
+
+    def getPayload(self):
+        return self.payload
+
+    def getTime(self):
+        return self.time
 
 class Http_processor(Thread):
     def __init__(self, queue):
@@ -18,9 +31,20 @@ class Http_processor(Thread):
         url = 'http://localhost:5000/submit/'
         headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
         while (True):
-            payload = self.queue.get()
+            element = self.queue.get()
+            payload = element[0]
+            # handle converting to json serializable here:
+            retval, buf = cv.imencode('.jpg', payload["image"])
+            jpg_as_text = base64.b64encode(buf).decode('ascii')
+            payload["image"] = jpg_as_text
+            start = time.time()
             requests.post(url, json=payload, headers=headers)
+            end = time.time()
+            delay = (time.time() - element[1]) # * 1000 in milliseconds
+            post_delay = end - start
             self.queue.task_done()
+            print("Delay for %d POST is %f seconds" %(payload["object_id"], post_delay))
+            print("Delay for %d is %f seconds" %(payload["object_id"], delay))
 
 class CentroidTracker(Thread):
     def __init__(self, queue, maxDisappeared=1): # 50
@@ -60,19 +84,21 @@ class CentroidTracker(Thread):
         cropped = self.frame[startY:endY, startX:endX]
         # print(type(cropped))
         # take away writing to file
-        # cv2.imwrite("static/object%d.jpg" % self.nextObjectID, cropped)  #todo: must be static/image for flask...
+        # cv.imwrite("static/object%d.jpg" % self.nextObjectID, cropped)  #todo: must be static/image for flask...
      
-        retval, buf = cv2.imencode('.jpg', cropped)
-        jpg_as_text = base64.b64encode(buf).decode('ascii')
-        # img_str = cv2.imencode('.jpg', cropped)[1].toString()
+        # retval, buf = cv.imencode('.jpg', cropped)
+        # jpg_as_text = base64.b64encode(buf).decode('ascii')
+        # img_str = cv.imencode('.jpg', cropped)[1].toString()
         # Put this into http_processor?
         # image_string = ""
         # with open("static/object%d.jpg" % self.nextObjectID, "rb") as imageFile:
         #     # imageFile.write(img_str.tobytes())
         #     print(imageFile)
             # image_string = base64.b64encode(imageFile.read()).decode('ascii') # must decode to ascii so that it is JSON serializable
-        payload = {"object_id":self.nextObjectID, "image":jpg_as_text}
-        self.queue.put_nowait(payload)
+        start_time = time.time()
+        payload = {"object_id":self.nextObjectID, "image":cropped}
+        element = (payload, start_time)
+        self.queue.put_nowait(element)
    
         # add before and after time?
         # do this multithreaded (to get these operations out of Critical Path)
