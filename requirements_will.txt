@@ -69,7 +69,7 @@ singledispatch==3.4.0.3
 six==1.4.1
 tornado==5.1.1
 TTFQuery==1.0.5
-urllib3==1.25.6
+urllib3==1.26.5
 vboxapi==1.0
 VPython==6.11
 wrapt==1.10.11
